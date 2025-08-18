@@ -42,7 +42,7 @@ func testCacheGet(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 2 * time.Second,
 			ReloadDelay:    1 * time.Second,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -98,7 +98,7 @@ func testCacheParallelism(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 10 * time.Millisecond,
 			ReloadDelay:    0,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -160,7 +160,7 @@ func testCacheInvalidateWithoutAggregator(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 5 * time.Second,
 			ReloadDelay:    0,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -232,7 +232,7 @@ func testCacheInvalidateWithggregator(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 5 * time.Second,
 			ReloadDelay:    2 * time.Second,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -305,7 +305,7 @@ func testCacheInvalidateAllSpeed(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 20 * time.Second,
 			ReloadDelay:    0,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -362,7 +362,7 @@ func testCacheMetrics(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 2 * time.Second,
 			ReloadDelay:    0,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 

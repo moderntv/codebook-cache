@@ -43,7 +43,7 @@ func testCacheMemsizeCalculated(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 2 * time.Second,
 			ReloadDelay:    1 * time.Second,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 
@@ -83,7 +83,7 @@ func TestCacheMemsizeManual(t *testing.T) {
 		Timeouts: Timeouts{
 			ReloadInterval: 2 * time.Second,
 			ReloadDelay:    1 * time.Second,
-			Ranomizer:      0,
+			Randomizer:     0,
 		},
 	})
 

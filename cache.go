@@ -144,7 +144,7 @@ func (c *Cache[K, T]) initPeriodicReload() {
 	}
 
 	// reload already performed, we will set nextReload in future
-	nextReloadTime := time.Now().Add(utils.RandomizeDuration(baseInterval, c.timeouts.Ranomizer))
+	nextReloadTime := time.Now().Add(utils.RandomizeDuration(baseInterval, c.timeouts.Randomizer))
 	c.nextReload = &nextReloadTime
 
 	// start goroutine for automatic reloading
@@ -226,7 +226,7 @@ func (c *Cache[K, T]) reload(force bool) (err error) {
 
 	var newNextReloadTime *time.Time
 	if c.timeouts.ReloadInterval > 0 {
-		t := start.Add(utils.RandomizeDuration(c.timeouts.ReloadInterval, c.timeouts.Ranomizer))
+		t := start.Add(utils.RandomizeDuration(c.timeouts.ReloadInterval, c.timeouts.Randomizer))
 		newNextReloadTime = &t
 		logEvent = logEvent.Time("next_reload", t)
 	}

@@ -36,7 +36,7 @@ func TestTimeoutsRanomizerValue(t *testing.T) {
 
 	for value, expected := range expetedResult {
 		timeouts := Timeouts{
-			Ranomizer: value,
+			Randomizer: value,
 		}
 		assert.Equal(t, expected, timeouts.check() == nil)
 	}
