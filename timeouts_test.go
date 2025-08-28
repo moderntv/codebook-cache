@@ -26,7 +26,7 @@ func TestTimeoutsReloadDelay(t *testing.T) {
 	}
 }
 
-func TestTimeoutsRanomizerValue(t *testing.T) {
+func TestTimeoutsRandomizerValue(t *testing.T) {
 	expetedResult := map[float64]bool{
 		0.5:  true,
 		0.0:  true,

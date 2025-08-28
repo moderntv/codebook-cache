@@ -18,7 +18,7 @@ When codebook cache is created by calling `New(...)` function, it tries to immed
 
 According to given `Timeouts`, data can be periodically reloaded. When reload successfully loads all items, data are replaced in cache. When reload fails, data in cache are not changed and warning is being logged. In both cases next periodic reload is planned according to `Timeouts.ReloadInterval` value.
 
-Due to possible performance issues or heavy-load spikes, reload interval can be ranomized by setting `Timeouts.Randomizer` to value between (0, 1>. Each periodic reload interval is then being randomized.
+Due to possible performance issues or heavy-load spikes, reload interval can be randomized by setting `Timeouts.Randomizer` to value between (0, 1>. Each periodic reload interval is then being randomized.
 
 ## Disadvantages
 

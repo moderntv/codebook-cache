@@ -8,7 +8,7 @@ import (
 type Timeouts struct {
 	// ReloadInterval specifies how often should the cache be reloaded.
 	// This duration is each time randomized by `Randomizer` attribute.
-	ReloadInterval time.Duration
+	ReloadInterval time.Duration `mapstructure:"reload_interval"`
 
 	// ReloadDelay specifies how long should the cache block the next reload after last reload.
 	// Useful when the cache is reloaded very often due to many invalidations (`InvalidateAll`
@@ -19,7 +19,7 @@ type Timeouts struct {
 	// When `InvalidateAll` function is called outside of this "blocking" time, the cache is reloaded
 	// immediatelly.
 	// The next reload time is then set as ReloadInterval +/- ReloadInterval * Randomizer.
-	ReloadDelay time.Duration
+	ReloadDelay time.Duration `mapstructure:"reload_delay"`
 
 	// Randomizer specifies how much the timeouts/durations should be randomized.
 	// Allowed values are from 0 to 1 (included).
@@ -27,7 +27,7 @@ type Timeouts struct {
 	// is treated as 1.
 	// e.g. real cache reload interval is set as `ReloadInterval` +/- `ReloadInterval` * `Randomizer`.
 	// All durations are being randomized each time they are set.
-	Randomizer float64
+	Randomizer float64 `mapstructure:"randomizer"`
 }
 
 func (t *Timeouts) check() error {
