@@ -26,6 +26,7 @@ type Cache[K comparable, T any] struct {
 	timeouts       Timeouts
 	loadAllFunc    LoadAllFunc[K, T]
 	reloadChan     chan bool
+	closeOnce      sync.Once // ensure channel is closed only once
 	aggregator     *aggregator.SimpleAggregator
 	memSizeEnabled bool
 	// dynamic attributes (not using mutex)
@@ -170,7 +171,11 @@ func (c *Cache[K, T]) initPeriodicReload() {
 				_ = c.reload(false)
 
 			case <-c.ctx.Done():
-				close(c.reloadChan)
+				timer.Stop()
+				c.closeOnce.Do(func() {
+					close(c.reloadChan)
+				})
+				return
 			}
 		}
 	}()
