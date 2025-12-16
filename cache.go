@@ -78,9 +78,12 @@ func New[K comparable, T any](params Params[K, T]) (c *Cache[K, T], err error) {
 		c.log.Warn().Msg("invalidations aggregation is disabled")
 	}
 
-	err = c.reload(true)
-	if err != nil {
-		return
+	// preload data in blocking mode
+	if !params.NonBlockingPreload {
+		err = c.reload(true)
+		if err != nil {
+			return
+		}
 	}
 
 	// set next reload and time checker
@@ -91,6 +94,11 @@ func New[K comparable, T any](params Params[K, T]) (c *Cache[K, T], err error) {
 		c.initInvalidations(params.Invalidations)
 	} else {
 		c.log.Warn().Msg("invalidations are disabled")
+	}
+
+	// start preloading in non-blocking mode
+	if params.NonBlockingPreload {
+		go c.reload(true)
 	}
 
 	return

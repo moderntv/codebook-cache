@@ -13,14 +13,15 @@ import (
 type LoadAllFunc[K comparable, T any] func(ctx context.Context) (entries map[K]*T, err error)
 
 type Params[K comparable, T any] struct {
-	Context         context.Context
-	Log             zerolog.Logger
-	MetricsRegistry *cadre_metrics.Registry
-	Invalidations   *Invalidations
-	Name            string
-	LoadAllFunc     LoadAllFunc[K, T]
-	Timeouts        Timeouts
-	MemsizeEnabled  bool
+	Context            context.Context
+	Log                zerolog.Logger
+	MetricsRegistry    *cadre_metrics.Registry
+	Invalidations      *Invalidations
+	Name               string
+	LoadAllFunc        LoadAllFunc[K, T]
+	Timeouts           Timeouts
+	NonBlockingPreload bool
+	MemsizeEnabled     bool
 }
 
 func (p *Params[K, T]) check() error {

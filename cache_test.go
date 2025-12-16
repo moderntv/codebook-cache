@@ -2,6 +2,7 @@ package codebook
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +20,9 @@ func TestCache(t *testing.T) {
 	t.Run("testCacheMetrics", testCacheMetrics)
 	t.Run("testCacheMemsizeCalculated", testCacheMemsizeCalculated)
 	t.Run("TestCacheMemsizeManual", TestCacheMemsizeManual)
+	t.Run("testBlockingPreload", testBlockingPreload)
+	t.Run("testNonBlockingPreload", testNonBlockingPreload)
+	t.Run("testBlockingPreloadWithError", testBlockingPreloadWithError)
 }
 
 func testCacheGet(t *testing.T) {
@@ -410,4 +414,145 @@ func testCacheMetrics(t *testing.T) {
 	assert.Equal(t, test_utils.IntPointer(4000), c.Get("key4"))
 	assert.Equal(t, test_utils.IntPointer(5000), c.Get("key5"))
 	assert.Nil(t, c.Get("key0"))
+}
+
+func testBlockingPreload(t *testing.T) {
+	t.Parallel()
+
+	loadCalled := make(chan bool, 1)
+	loadComplete := make(chan bool, 1)
+
+	c, err := New(Params[string, int]{
+		Context: context.Background(),
+		Log:     test_utils.Logger(),
+		Name:    "testing_cache_blocking",
+		LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+			loadCalled <- true
+			time.Sleep(100 * time.Millisecond) // simulate slow load
+			loadComplete <- true
+			return map[string]*int{
+				"key1": test_utils.IntPointer(1),
+				"key2": test_utils.IntPointer(2),
+			}, nil
+		},
+		Timeouts: Timeouts{
+			ReloadInterval: 5 * time.Second,
+			ReloadDelay:    0,
+			Randomizer:     0,
+		},
+		NonBlockingPreload: false,
+	})
+
+	// In blocking mode, New should not return until load is complete
+	// Check that load was called and completed before New returned
+	select {
+	case <-loadCalled:
+		// Good, load was called
+	case <-time.After(50 * time.Millisecond):
+		t.Error("Load function was not called")
+	}
+
+	select {
+	case <-loadComplete:
+		// Good, load completed before New returned
+	case <-time.After(100 * time.Millisecond):
+		t.Error("Load did not complete before New returned in blocking mode")
+	}
+
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+
+	// Data should be available immediately after New returns
+	assert.Equal(t, test_utils.IntPointer(1), c.Get("key1"))
+	assert.Equal(t, test_utils.IntPointer(2), c.Get("key2"))
+}
+
+func testNonBlockingPreload(t *testing.T) {
+	t.Parallel()
+
+	loadCalled := make(chan bool, 1)
+	loadComplete := make(chan bool, 1)
+
+	c, err := New(Params[string, int]{
+		Context: context.Background(),
+		Log:     test_utils.Logger(),
+		Name:    "testing_cache_nonblocking",
+		LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+			loadCalled <- true
+			time.Sleep(100 * time.Millisecond) // simulate slow load
+			loadComplete <- true
+			return map[string]*int{
+				"key1": test_utils.IntPointer(1),
+				"key2": test_utils.IntPointer(2),
+			}, nil
+		},
+		Timeouts: Timeouts{
+			ReloadInterval: 5 * time.Second,
+			ReloadDelay:    0,
+			Randomizer:     0,
+		},
+		NonBlockingPreload: true,
+	})
+
+	// In non-blocking mode, New should return immediately
+	// even if load is still in progress
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+
+	// Data might not be available immediately
+	// Check that New returned before load completed
+	select {
+	case <-loadComplete:
+		t.Error("Load completed before New returned in non-blocking mode")
+	default:
+		// Good, New returned before load completed
+	}
+
+	// Wait for load to complete
+	select {
+	case <-loadCalled:
+		// Good, load was called
+	case <-time.After(50 * time.Millisecond):
+		t.Error("Load function was not called")
+	}
+
+	// Wait for load to complete
+	select {
+	case <-loadComplete:
+		// Good, load completed
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Load did not complete")
+	}
+
+	// Now data should be available
+	time.Sleep(50 * time.Millisecond) // Give a bit more time for data to be stored
+	assert.Equal(t, test_utils.IntPointer(1), c.Get("key1"))
+	assert.Equal(t, test_utils.IntPointer(2), c.Get("key2"))
+}
+
+func testBlockingPreloadWithError(t *testing.T) {
+	t.Parallel()
+
+	testError := errors.New("load failed")
+
+	c, err := New(Params[string, int]{
+		Context: context.Background(),
+		Log:     test_utils.Logger(),
+		Name:    "testing_cache_blocking_error",
+		LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+			return nil, testError
+		},
+		Timeouts: Timeouts{
+			ReloadInterval: 5 * time.Second,
+			ReloadDelay:    0,
+			Randomizer:     0,
+		},
+		NonBlockingPreload: false,
+	})
+
+	// In blocking mode, when loadAllFunc fails, reload() returns the error
+	// and New() returns early with the error and the cache instance (which was already created)
+	assert.Error(t, err)
+	assert.Equal(t, testError, err)
+	assert.NotNil(t, c) // Cache is created before reload is called
 }
