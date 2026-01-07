@@ -17,6 +17,7 @@ type Metrics struct {
 	ReloadInterval            prometheus.Gauge
 	ReceivedNatsInvalidations prometheus.Counter
 	MemoryUsage               prometheus.Gauge
+	ReadsCount                prometheus.Counter
 }
 
 func New(
@@ -51,6 +52,13 @@ func New(
 		ConstLabels: prometheus.Labels{labelName: name},
 	})
 
+	readsCount := registry.NewCounter(prometheus.CounterOpts{
+		Subsystem:   subSystem,
+		Name:        "reads_count",
+		Help:        "Total number of cache reads",
+		ConstLabels: prometheus.Labels{labelName: name},
+	})
+
 	err = registry.Register(metricsPrefix+name+"_items_count", itemsCount)
 	if err != nil {
 		return
@@ -71,11 +79,17 @@ func New(
 		return
 	}
 
+	err = registry.Register(metricsPrefix+name+"_reads_count", readsCount)
+	if err != nil {
+		return
+	}
+
 	m = &Metrics{
 		ItemsCount:                itemsCount,
 		LoadCount:                 loadCount,
 		ReceivedNatsInvalidations: receivedNatsInvalidations,
 		MemoryUsage:               memoryUsage,
+		ReadsCount:                readsCount,
 	}
 
 	return

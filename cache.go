@@ -105,7 +105,8 @@ func New[K comparable, T any](params Params[K, T]) (c *Cache[K, T], err error) {
 }
 
 func (c *Cache[K, T]) Get(ID K) *T {
-	entries := c.GetAll()
+	entries := c.GetAll() // also increments reads count metric
+
 	// no additional locking is needed here, because the cache is never modified (just replaced)
 	entry, exists := entries[ID]
 	if !exists {
@@ -117,6 +118,11 @@ func (c *Cache[K, T]) Get(ID K) *T {
 
 func (c *Cache[K, T]) GetAll() (entries map[K]*T) {
 	entries = c.data.Load().(map[K]*T) // cache is always set
+
+	if c.metrics != nil {
+		c.metrics.ReadsCount.Inc()
+	}
+
 	return
 }
 
