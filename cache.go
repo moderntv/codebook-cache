@@ -84,6 +84,9 @@ func New[K comparable, T any](params Params[K, T]) (c *Cache[K, T], err error) {
 		if err != nil {
 			return
 		}
+	} else {
+		// non-blocking preload mode: initialize with empty map
+		c.data.Store(make(map[K]*T))
 	}
 
 	// set next reload and time checker
