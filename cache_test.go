@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,6 +24,7 @@ func TestCache(t *testing.T) {
 	t.Run("testBlockingPreload", testBlockingPreload)
 	t.Run("testNonBlockingPreload", testNonBlockingPreload)
 	t.Run("testBlockingPreloadWithError", testBlockingPreloadWithError)
+	t.Run("testOnReload", testOnReload)
 }
 
 func testCacheGet(t *testing.T) {
@@ -555,4 +557,160 @@ func testBlockingPreloadWithError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, testError, err)
 	assert.NotNil(t, c) // Cache is created before reload is called
+}
+
+func testOnReload(t *testing.T) {
+	t.Parallel()
+
+	t.Run("successfulInitialLoad", func(t *testing.T) {
+		t.Parallel()
+
+		var count atomic.Int32
+
+		_, err := New(Params[string, int]{
+			Context: context.Background(),
+			Log:     test_utils.Logger(),
+			Name:    "testing_cache_on_reload_initial",
+			LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+				return map[string]*int{
+					"key1": test_utils.IntPointer(1),
+				}, nil
+			},
+			Timeouts: Timeouts{
+				ReloadInterval: 5 * time.Second,
+				ReloadDelay:    0,
+				Randomizer:     0,
+			},
+			OnReload: func() {
+				count.Add(1)
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Eventually(t, func() bool {
+			return count.Load() == 1
+		}, time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("invalidateAllReload", func(t *testing.T) {
+		t.Parallel()
+
+		var count atomic.Int32
+		valueMultiplier := 10
+
+		c, err := New(Params[string, int]{
+			Context: context.Background(),
+			Log:     test_utils.Logger(),
+			Name:    "testing_cache_on_reload_invalidate",
+			LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+				return map[string]*int{
+					"key1": test_utils.IntPointer(1 * valueMultiplier),
+				}, nil
+			},
+			Timeouts: Timeouts{
+				ReloadInterval: 5 * time.Second,
+				ReloadDelay:    0,
+				Randomizer:     0,
+			},
+			OnReload: func() {
+				count.Add(1)
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Eventually(t, func() bool {
+			return count.Load() == 1
+		}, time.Second, 10*time.Millisecond)
+
+		valueMultiplier = 100
+		c.InvalidateAll()
+
+		assert.Eventually(t, func() bool {
+			return count.Load() == 2
+		}, time.Second, 10*time.Millisecond)
+		assert.Equal(t, test_utils.IntPointer(100), c.Get("key1"))
+	})
+
+	t.Run("failedReload", func(t *testing.T) {
+		t.Parallel()
+
+		var count atomic.Int32
+		loadCount := 0
+
+		c, err := New(Params[string, int]{
+			Context: context.Background(),
+			Log:     test_utils.Logger(),
+			Name:    "testing_cache_on_reload_failed",
+			LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+				loadCount++
+				if loadCount == 1 {
+					return map[string]*int{
+						"key1": test_utils.IntPointer(1),
+					}, nil
+				}
+				return nil, errors.New("load failed")
+			},
+			Timeouts: Timeouts{
+				ReloadInterval: 5 * time.Second,
+				ReloadDelay:    0,
+				Randomizer:     0,
+			},
+			OnReload: func() {
+				count.Add(1)
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Eventually(t, func() bool {
+			return count.Load() == 1
+		}, time.Second, 10*time.Millisecond)
+
+		c.InvalidateAll()
+
+		time.Sleep(1 * time.Second)
+
+		assert.Equal(t, int32(1), count.Load())
+		assert.Equal(t, test_utils.IntPointer(1), c.Get("key1"))
+	})
+
+	t.Run("skippedConcurrentReload", func(t *testing.T) {
+		t.Parallel()
+
+		var count atomic.Int32
+
+		c, err := New(Params[string, int]{
+			Context: context.Background(),
+			Log:     test_utils.Logger(),
+			Name:    "testing_cache_on_reload_skip",
+			LoadAllFunc: func(ctx context.Context) (map[string]*int, error) {
+				time.Sleep(500 * time.Millisecond)
+				return map[string]*int{
+					"key1": test_utils.IntPointer(1),
+				}, nil
+			},
+			Timeouts: Timeouts{
+				ReloadInterval: 5 * time.Second,
+				ReloadDelay:    0,
+				Randomizer:     0,
+			},
+			OnReload: func() {
+				count.Add(1)
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Eventually(t, func() bool {
+			return count.Load() == 1
+		}, time.Second, 10*time.Millisecond)
+
+		go c.InvalidateAll()
+		go c.InvalidateAll()
+
+		assert.Eventually(t, func() bool {
+			return count.Load() == 2
+		}, 3*time.Second, 10*time.Millisecond)
+
+		time.Sleep(500 * time.Millisecond)
+		assert.Equal(t, int32(2), count.Load())
+	})
 }

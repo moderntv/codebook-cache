@@ -6,9 +6,9 @@ It provides high read performance by using `atomic.Value` to store the data map,
 
 Provided functions:
 
--   `Get(ID)` — returns `*T` for key `K`, or `nil` if not found
--   `GetAll()` — returns `map[K]*T` (do not modify; it is shared with the cache)
--   `InvalidateAll()` — triggers a reload (immediate or delayed when `ReloadDelay` > 0)
+- `Get(ID)` — returns `*T` for key `K`, or `nil` if not found
+- `GetAll()` — returns `map[K]*T` (do not modify; it is shared with the cache)
+- `InvalidateAll()` — triggers a reload (immediate or delayed when `ReloadDelay` > 0)
 
 The cache uses Go generics: key type `K` must be `comparable`, value type `T` is arbitrary.
 
@@ -20,47 +20,48 @@ If `ReloadInterval` > 0, the cache periodically reloads. Each interval is random
 
 ## Caveats
 
--   Cached data may not reflect the current state of the underlying storage.
--   Only full reload is supported; you cannot add, remove, or update single items.
--   Set `Timeouts` to match your needs: e.g. frequent NATS-driven reloads for fresher data, or longer intervals for lower load on the source.
+- Cached data may not reflect the current state of the underlying storage.
+- Only full reload is supported; you cannot add, remove, or update single items.
+- Set `Timeouts` to match your needs: e.g. frequent NATS-driven reloads for fresher data, or longer intervals for lower load on the source.
 
 ## Timeouts
 
--   **ReloadInterval** – Period between periodic reloads; each is randomized by `Randomizer`. Use `0` to disable periodic reload (invalidations and `InvalidateAll` still run).
--   **ReloadDelay** – After a reload, further `InvalidateAll` calls are deferred for this duration and coalesced into one reload; outside this window, reload runs immediately. Must be ≤ `ReloadInterval`. Use `0` to disable (every invalidation triggers an immediate reload).
--   **Randomizer** – `[0, 1]`. `0` = no jitter; `0.1` = ±10%. Applied to `ReloadInterval` to reduce thundering herd.
+- **ReloadInterval** – Period between periodic reloads; each is randomized by `Randomizer`. Use `0` to disable periodic reload (invalidations and `InvalidateAll` still run).
+- **ReloadDelay** – After a reload, further `InvalidateAll` calls are deferred for this duration and coalesced into one reload; outside this window, reload runs immediately. Must be ≤ `ReloadInterval`. Use `0` to disable (every invalidation triggers an immediate reload).
+- **Randomizer** – `[0, 1]`. `0` = no jitter; `0.1` = ±10%. Applied to `ReloadInterval` to reduce thundering herd.
 
 ## Params
 
--   **Context** – `context.Context` for shutdown and `LoadAllFunc` calls. Required.
--   **Log** – `zerolog.Logger` for cache logs. Required.
--   **MetricsRegistry** – `*cadre_metrics.Registry`; if set, Prometheus metrics are registered. Optional.
--   **Invalidations** – `*Invalidations` for NATS-driven invalidation. If nil, NATS is disabled; only manual `InvalidateAll` and periodic reload (when `ReloadInterval` > 0) apply. Optional.
--   **Name** – Cache name used in logs and metrics. Required.
--   **LoadAllFunc** – `func(ctx context.Context) (map[K]*T, error)` that loads the full dataset. Required. Called on initial load, periodic reload, and after `InvalidateAll`.
--   **Timeouts** – Reload interval, delay, and randomization. Required; see `Timeouts` for rules (e.g. `ReloadDelay` ≤ `ReloadInterval`).
--   **NonBlockingPreload** – If `true`, `New` returns before the first load completes; initial load runs in a goroutine. If `false`, `New` blocks until the first load succeeds (or fails and returns an error).
--   **MemsizeEnabled** – If `true`, memory usage of cached entries is estimated and exposed via the `memory_usage` metric.
+- **Context** – `context.Context` for shutdown and `LoadAllFunc` calls. Required.
+- **Log** – `zerolog.Logger` for cache logs. Required.
+- **MetricsRegistry** – `*cadre_metrics.Registry`; if set, Prometheus metrics are registered. Optional.
+- **Invalidations** – `*Invalidations` for NATS-driven invalidation. If nil, NATS is disabled; only manual `InvalidateAll` and periodic reload (when `ReloadInterval` > 0) apply. Optional.
+- **Name** – Cache name used in logs and metrics. Required.
+- **LoadAllFunc** – `func(ctx context.Context) (map[K]*T, error)` that loads the full dataset. Required. Called on initial load, periodic reload, and after `InvalidateAll`.
+- **Timeouts** – Reload interval, delay, and randomization. Required; see `Timeouts` for rules (e.g. `ReloadDelay` ≤ `ReloadInterval`).
+- **NonBlockingPreload** – If `true`, `New` returns before the first load completes; initial load runs in a goroutine. If `false`, `New` blocks until the first load succeeds (or fails and returns an error).
+- **MemsizeEnabled** – If `true`, memory usage of cached entries is estimated and exposed via the `memory_usage` metric.
+- **OnReload** – Optional callback invoked asynchronously after each successful reload (including initial preload). Not called when reload is skipped or `LoadAllFunc` fails. Use `Get` / `GetAll` inside the callback to read fresh data.
 
 ## Metrics
 
 When `MetricsRegistry` is set, these Prometheus metrics are registered (subsystem `codebook_cache`, label `name`):
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `items_count` | Gauge | Number of cached items |
-| `load_count` | Counter | Load attempts (success or failure) |
-| `received_nats_invalidations` | Counter | NATS invalidation messages received |
-| `memory_usage` | Gauge | Estimated size of entries in bytes (`MemsizeEnabled` only) |
-| `reads_count` | Counter | `Get` / `GetAll` calls |
+| Metric                        | Type    | Description                                                |
+| ----------------------------- | ------- | ---------------------------------------------------------- |
+| `items_count`                 | Gauge   | Number of cached items                                     |
+| `load_count`                  | Counter | Load attempts (success or failure)                         |
+| `received_nats_invalidations` | Counter | NATS invalidation messages received                        |
+| `memory_usage`                | Gauge   | Estimated size of entries in bytes (`MemsizeEnabled` only) |
+| `reads_count`                 | Counter | `Get` / `GetAll` calls                                     |
 
 ## NATS invalidations
 
 If `Invalidations` is set, the cache subscribes to NATS and calls `InvalidateAll` on each message. `Invalidations`:
 
--   **Nats** – `*nats.Conn`. Required when `Invalidations` is non-nil.
--   **Prefix** – Prepended to each subject.
--   **Messages** – `map[string]proto.Message`: key = subject suffix, value = proto used to unmarshal. At least one entry required.
+- **Nats** – `*nats.Conn`. Required when `Invalidations` is non-nil.
+- **Prefix** – Prepended to each subject.
+- **Messages** – `map[string]proto.Message`: key = subject suffix, value = proto used to unmarshal. At least one entry required.
 
 Each received message is unmarshalled and triggers `InvalidateAll` (subject to `ReloadDelay` when > 0).
 
@@ -193,7 +194,7 @@ func (r *Repository) All() map[string]*Country {
 }
 ```
 
--   **LoadAllFunc**: loads all countries from DB into `map[string]*Country` (key = `Country.ID`).
--   **Invalidations**: subscribes to `Prefix + SubjectCountry`; on each `CountryInvalidation` message, `InvalidateAll` is called (and aggregated if `ReloadDelay` > 0).
--   **Timeouts**: periodic reload every ~10 minutes; invalidation bursts within 30s are coalesced into one reload.
--   **MemsizeEnabled**: enables the `memory_usage` metric for this cache.
+- **LoadAllFunc**: loads all countries from DB into `map[string]*Country` (key = `Country.ID`).
+- **Invalidations**: subscribes to `Prefix + SubjectCountry`; on each `CountryInvalidation` message, `InvalidateAll` is called (and aggregated if `ReloadDelay` > 0).
+- **Timeouts**: periodic reload every ~10 minutes; invalidation bursts within 30s are coalesced into one reload.
+- **MemsizeEnabled**: enables the `memory_usage` metric for this cache.

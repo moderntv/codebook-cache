@@ -29,6 +29,7 @@ type Cache[K comparable, T any] struct {
 	closeOnce      sync.Once // ensure channel is closed only once
 	aggregator     *aggregator.SimpleAggregator
 	memSizeEnabled bool
+	onReload       func()
 	// dynamic attributes (not using mutex)
 	memSizeValue atomic.Uint64
 	data         atomic.Value
@@ -63,6 +64,7 @@ func New[K comparable, T any](params Params[K, T]) (c *Cache[K, T], err error) {
 		loadAllFunc:    params.LoadAllFunc,
 		reloadChan:     make(chan bool, 1),
 		memSizeEnabled: params.MemsizeEnabled,
+		onReload:       params.OnReload,
 	}
 
 	if params.Timeouts.ReloadDelay > 0 {
@@ -228,6 +230,10 @@ func (c *Cache[K, T]) reload(force bool) (err error) {
 	entries, err := c.loadAllFunc(c.ctx)
 	if err == nil {
 		c.data.Store(entries)
+
+		if c.onReload != nil {
+			go c.onReload()
+		}
 
 		if c.memSizeEnabled {
 			go c.updateMemSize()
