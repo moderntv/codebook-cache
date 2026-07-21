@@ -232,7 +232,7 @@ func (c *Cache[K, T]) reload(force bool) (err error) {
 		c.data.Store(entries)
 
 		if c.onReload != nil {
-			go c.onReload(entries)
+			c.onReload(entries)
 		}
 
 		if c.memSizeEnabled {
