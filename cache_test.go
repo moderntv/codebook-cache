@@ -581,7 +581,7 @@ func testOnReload(t *testing.T) {
 				ReloadDelay:    0,
 				Randomizer:     0,
 			},
-			OnReload: func() {
+			OnReload: func(entries map[string]*int) {
 				count.Add(1)
 			},
 		})
@@ -612,7 +612,7 @@ func testOnReload(t *testing.T) {
 				ReloadDelay:    0,
 				Randomizer:     0,
 			},
-			OnReload: func() {
+			OnReload: func(entries map[string]*int) {
 				count.Add(1)
 			},
 		})
@@ -655,7 +655,7 @@ func testOnReload(t *testing.T) {
 				ReloadDelay:    0,
 				Randomizer:     0,
 			},
-			OnReload: func() {
+			OnReload: func(entries map[string]*int) {
 				count.Add(1)
 			},
 		})
@@ -693,7 +693,7 @@ func testOnReload(t *testing.T) {
 				ReloadDelay:    0,
 				Randomizer:     0,
 			},
-			OnReload: func() {
+			OnReload: func(entries map[string]*int) {
 				count.Add(1)
 			},
 		})

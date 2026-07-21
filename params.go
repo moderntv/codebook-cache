@@ -22,7 +22,7 @@ type Params[K comparable, T any] struct {
 	Timeouts           Timeouts
 	NonBlockingPreload bool
 	MemsizeEnabled     bool
-	OnReload           func()
+	OnReload           func(entries map[K]*T)
 }
 
 func (p *Params[K, T]) check() error {
