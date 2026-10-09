@@ -145,7 +145,7 @@ func (c *Cache[K, T]) initInvalidations(invalidations *Invalidations) {
 
 	for subject, message := range invalidations.Messages {
 		// subscribe to invalidation message
-		natsHelper.Subscribe(subject, message, func(_ proto.Message) {
+		natsHelper.Subscribe(c.ctx, subject, message, func(_ proto.Message) {
 			// invalidate whole repository
 			c.log.Trace().Msg("Invalidate")
 			if c.metrics != nil {

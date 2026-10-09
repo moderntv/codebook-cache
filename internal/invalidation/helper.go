@@ -1,6 +1,7 @@
 package invalidation
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -53,10 +54,14 @@ func (h *NatsHelper) Publish(subject string, data proto.Message) (err error) {
 }
 
 // Subscribe receives messages from NATS and with each message
-// calls `cb` function.
+// calls `cb` function until ctx is done.
 // When Subscribe fails, function automatically tries to subscribe again
-// after 31 seconds until it succeeds.
-func (h *NatsHelper) Subscribe(subject string, protoMsg proto.Message, cb func(proto.Message)) {
+// after 31 seconds until it succeeds or ctx is done.
+func (h *NatsHelper) Subscribe(ctx context.Context, subject string, protoMsg proto.Message, cb func(proto.Message)) {
+	if ctx.Err() != nil {
+		return
+	}
+
 	subs, err := h.connection.Subscribe(h.prefix+subject, func(natsMsg *nats.Msg) {
 		msgReset, ok := protoMsg.(resetter)
 		if ok {
@@ -87,7 +92,12 @@ func (h *NatsHelper) Subscribe(subject string, protoMsg proto.Message, cb func(p
 		_ = subs.Unsubscribe() // ignore error
 		// try to subscribe again after 31 sec
 		time.AfterFunc(31*time.Second, func() {
-			h.Subscribe(subject, protoMsg, cb)
+			h.Subscribe(ctx, subject, protoMsg, cb)
 		})
+		return
 	}
+
+	context.AfterFunc(ctx, func() {
+		_ = subs.Unsubscribe()
+	})
 }
